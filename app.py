@@ -12,8 +12,8 @@ from datetime import date, datetime, timedelta
 # 定数
 # ═════════════════════════════════════════════════════════════════
 CSV_FILE       = "reservations.csv"
-APP_PASSWORD   = "hokkyodai2024"   # ← 学内共有パスワード（適宜変更）
-ADMIN_PASSWORD = "admin1234"       # ← 管理者パスワード（適宜変更）
+APP_PASSWORD   = st.secrets["APP_PASSWORD"]
+ADMIN_PASSWORD = st.secrets["ADMIN_PASSWORD"]
 TIME_SLOTS     = ["1限", "2限", "3限", "4限", "5限", "昼休み", "放課後"]
 GRADES         = ["1年", "2年", "3年", "4年"]
 COLUMNS        = ["日付", "時間帯", "学年", "氏名", "使用目的", "備考", "登録日時"]
