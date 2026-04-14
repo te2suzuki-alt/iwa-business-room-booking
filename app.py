@@ -131,7 +131,11 @@ html, body, [class*="css"] { font-family: 'Noto Sans JP', sans-serif; }
     # st.login() はフォーム外・Streamlit ウィジェットとして配置する必要がある
     col_l, col_c, col_r = st.columns([1, 1, 1])
     with col_c:
-        st.login()   # secrets.toml の [auth] 設定を使って OAuth フローを開始
+        try:
+            st.login()
+        except Exception as e:
+            st.error(f"ログインエラー：{e}")
+            st.stop()
 
     st.stop()   # ここより下は未ログイン時に実行しない
 
