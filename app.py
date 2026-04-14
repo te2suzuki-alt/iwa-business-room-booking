@@ -51,8 +51,8 @@ def _show_auth_config_error() -> None:
 # .streamlit/secrets.toml  ※ [auth] にすべてフラットに書く（[auth.google] は使わない）
 
 [auth]
-redirect_uri        = "http://localhost:8501/oauth2callback"
-cookie_secret       = "Pythonで生成したランダム文字列"
+redirect_uri        = "https://iwa-business-room-booking.streamlit.app/oauth2callback"
+cookie_secret       = "ランダム文字列"
 server_metadata_url = "https://accounts.google.com/.well-known/openid-configuration"
 client_id           = "YOUR_CLIENT_ID.apps.googleusercontent.com"
 client_secret       = "YOUR_CLIENT_SECRET"
