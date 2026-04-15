@@ -16,9 +16,14 @@ CSV_FILE   = "reservations.csv"
 TIME_SLOTS = ["1限", "2限", "3限", "4限", "5限", "昼休み", "放課後"]
 COLUMNS    = ["日付", "時間帯", "学年", "氏名", "使用目的", "備考", "登録日時"]
 WEEKDAY_JP = ["月", "火", "水", "木", "金", "土", "日"]
+REFRESH_INTERVAL = 60   # 自動更新の間隔（秒）
 
-# 自動更新の間隔（秒）
-REFRESH_INTERVAL = 60
+# ═════════════════════════════════════════════════════════════════
+# ★ サイネージはパスワード不要
+#   app.py と session_state を共有しているため、
+#   ここで強制的に is_logged_in = True にセットしてパスワード画面を回避する
+# ═════════════════════════════════════════════════════════════════
+st.session_state["is_logged_in"] = True
 
 # ═════════════════════════════════════════════════════════════════
 # ページ設定
@@ -27,20 +32,19 @@ st.set_page_config(
     page_title="講義室 本日の予約状況",
     page_icon="🏫",
     layout="wide",
-    initial_sidebar_state="collapsed",   # サイドバーを最初から閉じる
+    initial_sidebar_state="collapsed",
 )
 
 # ═════════════════════════════════════════════════════════════════
-# スタイル
-# サイドバーのページ一覧・開閉ボタンを完全に非表示にする
+# スタイル（サイドバー非表示・ダークテーマ）
 # ═════════════════════════════════════════════════════════════════
 st.markdown("""
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700;900&display=swap');
 
 /* サイドバー本体・開閉ボタンをすべて非表示 */
-[data-testid="stSidebar"]         { display: none !important; }
-[data-testid="collapsedControl"]  { display: none !important; }
+[data-testid="stSidebar"]        { display: none !important; }
+[data-testid="collapsedControl"] { display: none !important; }
 
 /* 背景・文字色 */
 html, body, [class*="css"] {
@@ -83,8 +87,6 @@ html, body, [class*="css"] {
     overflow: hidden;
     min-height: 90px;
 }
-
-/* 時間帯ラベル */
 .slot-time {
     width: 130px;
     min-width: 130px;
@@ -97,8 +99,6 @@ html, body, [class*="css"] {
     color: #cbd5e1;
     letter-spacing: 0.05em;
 }
-
-/* 空きセル */
 .slot-free {
     flex: 1;
     display: flex;
@@ -113,8 +113,6 @@ html, body, [class*="css"] {
     color: #4ade80;
     letter-spacing: 0.1em;
 }
-
-/* 予約ありセル */
 .slot-taken {
     flex: 1;
     display: flex;
@@ -171,7 +169,6 @@ today_str = today.strftime("%Y-%m-%d")
 weekday   = WEEKDAY_JP[today.weekday()]
 now_str   = datetime.now().strftime("%H:%M")
 
-# ヘッダー
 st.markdown(
     f'<div class="signage-header">'
     f'  <div class="signage-title">🏫 ビジネス講義室　本日の予約状況</div>'
@@ -187,11 +184,9 @@ st.markdown(
 
 st.markdown("---")
 
-# 予約データ取得
 df       = load_csv()
 reserved = get_reserved_slots(df, today_str)
 
-# 時間帯ごとに表示
 for slot in TIME_SLOTS:
     if slot in reserved:
         r       = reserved[slot]
