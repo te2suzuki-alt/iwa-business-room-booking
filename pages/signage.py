@@ -27,19 +27,28 @@ st.set_page_config(
     page_title="講義室 本日の予約状況",
     page_icon="🏫",
     layout="wide",
+    initial_sidebar_state="collapsed",   # サイドバーを最初から閉じる
 )
 
 # ═════════════════════════════════════════════════════════════════
 # スタイル
+# サイドバーのページ一覧・開閉ボタンを完全に非表示にする
 # ═════════════════════════════════════════════════════════════════
 st.markdown("""
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700;900&display=swap');
+
+/* サイドバー本体・開閉ボタンをすべて非表示 */
+[data-testid="stSidebar"]         { display: none !important; }
+[data-testid="collapsedControl"]  { display: none !important; }
+
+/* 背景・文字色 */
 html, body, [class*="css"] {
     font-family: 'Noto Sans JP', sans-serif;
-    background-color: #0f172a;
+    background-color: #0f172a !important;
     color: #f1f5f9;
 }
+.stApp { background-color: #0f172a !important; }
 
 /* ─── ヘッダー ─── */
 .signage-header {
@@ -157,19 +166,21 @@ def get_reserved_slots(df: pd.DataFrame, target_date: str) -> dict:
 # ═════════════════════════════════════════════════════════════════
 # メイン表示
 # ═════════════════════════════════════════════════════════════════
-today      = date.today()
-today_str  = today.strftime("%Y-%m-%d")
-weekday    = WEEKDAY_JP[today.weekday()]
-now_str    = datetime.now().strftime("%H:%M")
+today     = date.today()
+today_str = today.strftime("%Y-%m-%d")
+weekday   = WEEKDAY_JP[today.weekday()]
+now_str   = datetime.now().strftime("%H:%M")
 
 # ヘッダー
 st.markdown(
     f'<div class="signage-header">'
-    f'<div class="signage-title">🏫 ビジネス講義室　本日の予約状況</div>'
-    f'<div class="signage-date">'
-    f'{today.year}年{today.month}月{today.day}日（{weekday}）'
-    f'</div>'
-    f'<div class="signage-updated">最終更新：{now_str}　／　{REFRESH_INTERVAL}秒ごとに自動更新</div>'
+    f'  <div class="signage-title">🏫 ビジネス講義室　本日の予約状況</div>'
+    f'  <div class="signage-date">'
+    f'    {today.year}年{today.month}月{today.day}日（{weekday}）'
+    f'  </div>'
+    f'  <div class="signage-updated">'
+    f'    最終更新：{now_str}　／　{REFRESH_INTERVAL}秒ごとに自動更新'
+    f'  </div>'
     f'</div>',
     unsafe_allow_html=True,
 )
