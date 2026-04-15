@@ -12,11 +12,13 @@ from datetime import date, datetime, timedelta
 # 定数
 # ═════════════════════════════════════════════════════════════════
 CSV_FILE       = "reservations.csv"
-APP_PASSWORD   = st.secrets["APP_PASSWORD"]
-ADMIN_PASSWORD = st.secrets["ADMIN_PASSWORD"]
+INFO_FILE      = "info.csv"                      # お知らせデータ保存ファイル
+APP_PASSWORD   = st.secrets["APP_PASSWORD"]      # Streamlit Cloud Secrets から読み込む
+ADMIN_PASSWORD = st.secrets["ADMIN_PASSWORD"]    # Streamlit Cloud Secrets から読み込む
 TIME_SLOTS     = ["1限", "2限", "3限", "4限", "5限", "昼休み", "放課後"]
 GRADES         = ["1年", "2年", "3年", "4年"]
 COLUMNS        = ["日付", "時間帯", "学年", "氏名", "使用目的", "備考", "登録日時"]
+INFO_COLUMNS   = ["種別", "内容", "登録日時"]
 WEEKDAY_JP     = ["月", "火", "水", "木", "金", "土", "日"]
 
 # ═════════════════════════════════════════════════════════════════
@@ -67,6 +69,22 @@ html, body, [class*="css"] { font-family: 'Noto Sans JP', sans-serif; }
     padding-bottom:0.3rem; margin-bottom:0.2rem;
 }
 .sub-title { color:#6b7280; font-size:0.95rem; margin-bottom:0.8rem; }
+
+/* ─── お知らせカード ─── */
+.info-fixed {
+    background:#fffbeb; border-left:4px solid #f59e0b;
+    border-radius:6px; padding:7px 10px; margin-bottom:6px;
+    font-size:0.8rem; color:#78350f; line-height:1.5;
+}
+.info-schedule {
+    background:#eff6ff; border-left:4px solid #3b82f6;
+    border-radius:6px; padding:7px 10px; margin-bottom:6px;
+    font-size:0.8rem; color:#1e3a5f; line-height:1.5;
+}
+.info-label {
+    font-size:0.68rem; font-weight:700; letter-spacing:0.05em;
+    margin-bottom:2px;
+}
 
 /* ─── 予約状況カード ─── */
 .slot-card {
@@ -167,7 +185,7 @@ if not st.session_state["is_logged_in"]:
 # ─── ここより下はログイン済みユーザーのみ到達 ───────────────────
 
 # ═════════════════════════════════════════════════════════════════
-# CSV 読み書き
+# CSV 読み書き（予約データ）
 # ═════════════════════════════════════════════════════════════════
 def load_csv() -> pd.DataFrame:
     if not os.path.exists(CSV_FILE):
@@ -185,6 +203,24 @@ def load_csv() -> pd.DataFrame:
 
 def save_csv(df: pd.DataFrame) -> None:
     df.to_csv(CSV_FILE, index=False, encoding="utf-8-sig")
+
+# ═════════════════════════════════════════════════════════════════
+# CSV 読み書き（お知らせデータ）
+# ═════════════════════════════════════════════════════════════════
+def load_info() -> pd.DataFrame:
+    if not os.path.exists(INFO_FILE):
+        df_empty = pd.DataFrame(columns=INFO_COLUMNS)
+        try:
+            df_empty.to_csv(INFO_FILE, index=False, encoding="utf-8-sig")
+        except Exception:
+            return df_empty
+    try:
+        return pd.read_csv(INFO_FILE, encoding="utf-8-sig", dtype=str).fillna("")
+    except Exception:
+        return pd.DataFrame(columns=INFO_COLUMNS)
+
+def save_info(df: pd.DataFrame) -> None:
+    df.to_csv(INFO_FILE, index=False, encoding="utf-8-sig")
 
 # ═════════════════════════════════════════════════════════════════
 # ヘルパー関数
@@ -268,12 +304,103 @@ def build_calendar_html(df: pd.DataFrame, today: date) -> str:
 # サイドバー
 # ═════════════════════════════════════════════════════════════════
 with st.sidebar:
+
+    # ── メニュー ──
     st.markdown("## 🏫 メニュー")
     page = st.radio(
         "画面を選択",
         ["📅 予約・閲覧", "🔧 管理者画面"],
         label_visibility="collapsed",
     )
+
+    # ══════════════════════════════════════════════
+    # ── お知らせ・固定情報（メニューとログアウトの間）──
+    # ══════════════════════════════════════════════
+    st.markdown("---")
+    st.markdown("### 📌 お知らせ・使用情報")
+
+    info_df = load_info()
+
+    if info_df.empty:
+        st.caption("現在お知らせはありません")
+    else:
+        fixed_df    = info_df[info_df["種別"] == "固定使用"]
+        schedule_df = info_df[info_df["種別"] == "今後の予定"]
+
+        if not fixed_df.empty:
+            st.markdown(
+                '<div class="info-label" style="color:#92400e;">📌 固定使用</div>',
+                unsafe_allow_html=True,
+            )
+            for _, row in fixed_df.iterrows():
+                st.markdown(
+                    f'<div class="info-fixed">{row["内容"]}</div>',
+                    unsafe_allow_html=True,
+                )
+
+        if not schedule_df.empty:
+            st.markdown(
+                '<div class="info-label" style="color:#1e3a8a;">📅 今後の予定</div>',
+                unsafe_allow_html=True,
+            )
+            for _, row in schedule_df.iterrows():
+                st.markdown(
+                    f'<div class="info-schedule">{row["内容"]}</div>',
+                    unsafe_allow_html=True,
+                )
+
+    # 管理者のみ：お知らせ追加・削除
+    if check_admin():
+        with st.expander("✏️ お知らせを編集する", expanded=False):
+            # 追加フォーム
+            with st.form("info_add_form", clear_on_submit=True):
+                st.caption("新しいお知らせを追加")
+                new_kind    = st.selectbox("種別", ["固定使用", "今後の予定"])
+                new_content = st.text_area(
+                    "内容", height=80,
+                    placeholder="例：毎週月曜1限 〇〇ゼミ（通年）"
+                )
+                add_submit = st.form_submit_button(
+                    "➕ 追加", type="primary", use_container_width=True
+                )
+                if add_submit:
+                    if not new_content.strip():
+                        st.error("内容を入力してください")
+                    else:
+                        new_row = pd.DataFrame([{
+                            "種別":     new_kind,
+                            "内容":     new_content.strip(),
+                            "登録日時": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                        }])
+                        updated_info = pd.concat(
+                            [load_info(), new_row], ignore_index=True
+                        )
+                        save_info(updated_info)
+                        st.session_state["flash_message"] = {
+                            "type": "success", "text": "お知らせを追加しました"
+                        }
+                        st.rerun()
+
+            # 削除
+            st.caption("登録済みのお知らせを削除")
+            current_info = load_info()
+            if current_info.empty:
+                st.caption("削除できるお知らせがありません")
+            else:
+                for idx, row in current_info.iterrows():
+                    col_text, col_btn = st.columns([4, 1])
+                    with col_text:
+                        st.caption(f"【{row['種別']}】{row['内容'][:20]}...")
+                    with col_btn:
+                        if st.button("🗑️", key=f"del_info_{idx}"):
+                            updated_info = current_info.drop(
+                                index=idx
+                            ).reset_index(drop=True)
+                            save_info(updated_info)
+                            st.session_state["flash_message"] = {
+                                "type": "success", "text": "お知らせを削除しました"
+                            }
+                            st.rerun()
 
     # ── ログアウト ──
     st.markdown("---")
